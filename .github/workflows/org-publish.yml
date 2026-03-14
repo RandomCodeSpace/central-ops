@@ -1,0 +1,109 @@
+name: 🚀 Auto-Publish Organization Packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # Critical for modern OIDC (Passwordless) authentication
+
+jobs:
+  # 🐍 Python -> PyPI
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('pyproject.toml') != '' || hashFiles('setup.py') != '' }}
+    steps:
+      - name: Checkout Code 📦
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 🛠️
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          
+      - name: Build Package 🏗️
+        run: pip install build && python -m build
+        
+      - name: Publish to PyPI 🌐
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses modern OIDC trusted publishing (no hardcoded passwords required!)
+
+  # ⚛️ Node.js / React -> npm
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('package.json') != '' }}
+    steps:
+      - name: Checkout Code 📦
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js 🛠️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: Install dependencies and build 🏗️
+        run: |
+          npm ci
+          npm run build --if-present
+          
+      - name: Publish to npm 🌐
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ☕ Java / Kotlin -> Maven Central
+  publish-maven:
+    name: Publish to Maven Central
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('pom.xml') != '' || hashFiles('build.gradle') != '' || hashFiles('build.gradle.kts') != '' }}
+    steps:
+      - name: Checkout Code 📦
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK 🛠️
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          
+      - name: Publish to Maven Central 🌐
+        run: mvn --batch-mode deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+
+  # 🐹 Go -> Go Modules & GitHub Releases
+  publish-go:
+    name: Publish Go Module
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('go.mod') != '' }}
+    steps:
+      - name: Checkout Code 📦
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Go 🛠️
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          
+      # Go modules are natively published via Git tags, but GoReleaser is the 
+      # modern standard for building binaries, checksums, and Docker images.
+      - name: Run GoReleaser 🚀
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
