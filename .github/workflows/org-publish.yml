@@ -86,7 +86,7 @@ jobs:
   publish-go:
     name: Publish Go Module
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('go.mod') != '' }}
+    if: ${{ hashFiles('go.mod') != '' && hashFiles('.goreleaser.yml') != '' }}
     steps:
       - name: Checkout Code 📦
         uses: actions/checkout@v4

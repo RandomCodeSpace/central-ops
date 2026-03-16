@@ -1,0 +1,31 @@
+name: Reusable Release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Base beta version to release (e.g., v0.0.5-beta). Auto-increments resume from this base on the next push to main.'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          prerelease: false
+          generate_release_notes: true
