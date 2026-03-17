@@ -77,12 +77,6 @@ jobs:
     uses: RandomCodeSpace/central-ops/.github/workflows/security.yml@main
     secrets: inherit
 
-  codeql:
-    name: CodeQL
-    if: inputs.run_codeql
-    needs: build-and-test
-    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-codeql.yml@main
-
   openssf-scorecard:
     name: OpenSSF Scorecard
     if: inputs.run_openssf_scorecard
