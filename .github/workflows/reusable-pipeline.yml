@@ -37,7 +37,7 @@ on:
 jobs:
   build-and-test:
     name: Build and Test
-    uses: ./.github/workflows/reusable-ci.yml
+    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-ci.yml@main
     with:
       go_version_file: ${{ inputs.go_version_file }}
       working_directory: ${{ inputs.working_directory }}
@@ -49,13 +49,13 @@ jobs:
   security-scan:
     name: Security Scan
     needs: build-and-test
-    uses: ./.github/workflows/security.yml
+    uses: RandomCodeSpace/central-ops/.github/workflows/security.yml@main
     secrets: inherit
 
   openssf-scorecard:
     name: OpenSSF Scorecard
     needs: build-and-test
-    uses: ./.github/workflows/reusable-scorecard.yml
+    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-scorecard.yml@main
 
   auto-beta:
     name: Auto Beta
@@ -63,5 +63,5 @@ jobs:
     needs:
       - security-scan
       - openssf-scorecard
-    uses: ./.github/workflows/reusable-auto-beta.yml
+    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-auto-beta.yml@main
     secrets: inherit
