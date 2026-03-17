@@ -36,7 +36,7 @@ on:
       codeql_languages:
         description: Comma-separated CodeQL language list
         required: false
-        default: go,javascript
+        default: go
         type: string
       release_version:
         description: Optional release tag (e.g. v1.2.3). When set, release job runs.
