@@ -58,6 +58,11 @@ on:
         required: false
         default: true
         type: boolean
+      run_cifuzz:
+        description: Run CIFuzz stage on pull requests
+        required: false
+        default: true
+        type: boolean
       run_auto_beta:
         description: Run auto-beta stage on main push
         required: false
@@ -275,6 +280,29 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
+
+  cifuzz:
+    name: CIFuzz
+    if: github.event_name == 'pull_request' && (github.event_name != 'workflow_call' || inputs.run_cifuzz)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Initialize CIFuzz
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ inputs.codeql_languages }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyze CIFuzz results
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /cifuzz
 
   auto-beta:
     name: Auto Beta
