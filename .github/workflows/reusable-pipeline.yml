@@ -258,7 +258,9 @@ jobs:
   openssf-scorecard:
     name: OpenSSF Scorecard
     if: github.event_name != 'release' && (github.event_name != 'workflow_call' || inputs.run_openssf_scorecard)
-    needs: build-and-test
+    needs:
+      - build-and-test
+      - cifuzz
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -283,7 +285,7 @@ jobs:
 
   cifuzz:
     name: CIFuzz
-    if: ((github.event_name == 'pull_request') || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch')) && (github.event_name != 'workflow_call' || inputs.run_cifuzz)
+    if: github.event_name != 'release' && (github.event_name != 'workflow_call' || inputs.run_cifuzz)
     needs: build-and-test
     runs-on: ubuntu-latest
     permissions:
