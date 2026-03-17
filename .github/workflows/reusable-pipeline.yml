@@ -33,30 +33,6 @@ on:
         required: false
         default: npm ci && npm run build
         type: string
-      run_security_scan:
-        description: Run security scan stage
-        required: false
-        default: true
-        type: boolean
-      run_codeql:
-        description: Run CodeQL stage
-        required: false
-        default: true
-        type: boolean
-      run_openssf_scorecard:
-        description: Run OpenSSF Scorecard stage
-        required: false
-        default: true
-        type: boolean
-      run_auto_beta:
-        description: Run auto-beta stage on main push
-        required: false
-        default: true
-        type: boolean
-
-concurrency:
-  group: reusable-pipeline-${{ github.repository }}-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   build-and-test:
@@ -72,20 +48,23 @@ jobs:
 
   security-scan:
     name: Security Scan
-    if: inputs.run_security_scan
     needs: build-and-test
     uses: RandomCodeSpace/central-ops/.github/workflows/security.yml@main
     secrets: inherit
 
+  codeql:
+    name: CodeQL
+    needs: build-and-test
+    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-codeql.yml@main
+
   openssf-scorecard:
     name: OpenSSF Scorecard
-    if: inputs.run_openssf_scorecard
     needs: build-and-test
     uses: RandomCodeSpace/central-ops/.github/workflows/reusable-scorecard.yml@main
 
   auto-beta:
     name: Auto Beta
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.run_auto_beta && inputs.run_security_scan && inputs.run_codeql && inputs.run_openssf_scorecard
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - security-scan
       - codeql
