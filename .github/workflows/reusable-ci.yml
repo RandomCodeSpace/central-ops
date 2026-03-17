@@ -1,0 +1,119 @@
+name: Reusable CI
+
+on:
+  workflow_call:
+    inputs:
+      go_version_file:
+        description: Path to go version file
+        required: false
+        default: go.mod
+        type: string
+      working_directory:
+        description: Working directory for build and tests
+        required: false
+        default: .
+        type: string
+      cgo_enabled:
+        description: CGO_ENABLED value for build and test
+        required: false
+        default: "0"
+        type: string
+      go_test_flags:
+        description: Additional flags passed to go test
+        required: false
+        default: ""
+        type: string
+      node_version:
+        description: Node.js version used when package.json exists
+        required: false
+        default: "20"
+        type: string
+      ui_build_command:
+        description: Command run in detected UI directory
+        required: false
+        default: npm ci && npm run build
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect frontend project
+        id: detect-ui
+        run: |
+          set -euo pipefail
+          BASE="${{ inputs.working_directory }}"
+          if [ "$BASE" = "." ]; then
+            BASE=""
+          else
+            BASE="${BASE%/}/"
+          fi
+
+          if [ -f "${BASE}package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            if [ -n "$BASE" ]; then
+              echo "manifest_dir=${BASE%/}" >> "$GITHUB_OUTPUT"
+            else
+              echo "manifest_dir=." >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          if [ -f "${BASE}ui/package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "manifest_dir=${BASE}ui" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "manifest_dir=" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        if: steps.detect-ui.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+          cache-dependency-path: ${{ steps.detect-ui.outputs.manifest_dir }}/package-lock.json
+
+      - name: Build frontend
+        if: steps.detect-ui.outputs.exists == 'true'
+        working-directory: ${{ steps.detect-ui.outputs.manifest_dir }}
+        run: ${{ inputs.ui_build_command }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.working_directory }}/${{ inputs.go_version_file }}
+          cache: true
+
+      - name: Build
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          CGO_ENABLED: ${{ inputs.cgo_enabled }}
+        run: go build ./...
+
+      - name: Vet
+        working-directory: ${{ inputs.working_directory }}
+        run: go vet ./...
+
+      - name: Test
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          CGO_ENABLED: ${{ inputs.cgo_enabled }}
+        run: |
+          if [ -n "${{ inputs.go_test_flags }}" ]; then
+            go test ${{ inputs.go_test_flags }} ./...
+          else
+            go test ./...
+          fi

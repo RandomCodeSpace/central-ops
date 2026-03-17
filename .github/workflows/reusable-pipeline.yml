@@ -1,0 +1,67 @@
+name: Reusable CI Security Beta
+
+on:
+  workflow_call:
+    inputs:
+      go_version_file:
+        description: Path to go version file
+        required: false
+        default: go.mod
+        type: string
+      working_directory:
+        description: Working directory for build and tests
+        required: false
+        default: .
+        type: string
+      cgo_enabled:
+        description: CGO_ENABLED value for build and test
+        required: false
+        default: "0"
+        type: string
+      go_test_flags:
+        description: Additional flags passed to go test
+        required: false
+        default: ""
+        type: string
+      node_version:
+        description: Node.js version used when package.json exists
+        required: false
+        default: "20"
+        type: string
+      ui_build_command:
+        description: Command run in detected UI directory
+        required: false
+        default: npm ci && npm run build
+        type: string
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    uses: ./.github/workflows/reusable-ci.yml
+    with:
+      go_version_file: ${{ inputs.go_version_file }}
+      working_directory: ${{ inputs.working_directory }}
+      cgo_enabled: ${{ inputs.cgo_enabled }}
+      go_test_flags: ${{ inputs.go_test_flags }}
+      node_version: ${{ inputs.node_version }}
+      ui_build_command: ${{ inputs.ui_build_command }}
+
+  security-scan:
+    name: Security Scan
+    needs: build-and-test
+    uses: ./.github/workflows/security.yml
+    secrets: inherit
+
+  openssf-scorecard:
+    name: OpenSSF Scorecard
+    needs: build-and-test
+    uses: ./.github/workflows/reusable-scorecard.yml
+
+  auto-beta:
+    name: Auto Beta
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - security-scan
+      - openssf-scorecard
+    uses: ./.github/workflows/reusable-auto-beta.yml
+    secrets: inherit

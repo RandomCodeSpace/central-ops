@@ -1,13 +1,18 @@
-name: Auto Beta
+name: CI Security Beta
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
+  security-events: write
+  id-token: write
+  actions: read
 
 jobs:
-  auto-beta:
-    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-auto-beta.yml@main
+  pipeline:
+    uses: ./.github/workflows/reusable-pipeline.yml
     secrets: inherit
