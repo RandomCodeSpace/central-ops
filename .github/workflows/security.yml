@@ -17,15 +17,6 @@ jobs:
         with:
           fetch-depth: 0
         if: always()
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        if: always()
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-        if: always()
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        if: always()
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:

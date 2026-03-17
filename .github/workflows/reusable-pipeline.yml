@@ -52,6 +52,11 @@ jobs:
     uses: RandomCodeSpace/central-ops/.github/workflows/security.yml@main
     secrets: inherit
 
+  codeql:
+    name: CodeQL
+    needs: build-and-test
+    uses: RandomCodeSpace/central-ops/.github/workflows/reusable-codeql.yml@main
+
   openssf-scorecard:
     name: OpenSSF Scorecard
     needs: build-and-test
@@ -62,6 +67,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - security-scan
+      - codeql
       - openssf-scorecard
     uses: RandomCodeSpace/central-ops/.github/workflows/reusable-auto-beta.yml@main
     secrets: inherit
