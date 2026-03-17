@@ -1,13 +1,14 @@
 name: Security Scan 🛡️
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
   schedule:
     - cron: '0 0 * * 0' # Runs weekly as a safety net
-
+  
 jobs:
   secret-scan:
     name: Gitleaks Secret Scanner 🕵️‍♂️
