@@ -3,16 +3,18 @@ name: Reusable OpenSSF Scorecard
 on:
   workflow_call:
 
-permissions:
-  security-events: write
-  id-token: write
-  contents: read
-  actions: read
-
 jobs:
   scorecard:
     name: OpenSSF Scorecard
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+      issues: read
+      pull-requests: read
+      checks: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
