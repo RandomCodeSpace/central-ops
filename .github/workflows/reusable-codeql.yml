@@ -2,6 +2,12 @@ name: Reusable CodeQL
 
 on:
   workflow_call:
+    inputs:
+      codeql_languages:
+        description: Comma-separated CodeQL language list
+        required: false
+        default: go,javascript
+        type: string
 
 jobs:
   codeql:
@@ -18,7 +24,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: go,javascript
+          languages: ${{ inputs.codeql_languages }}
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
