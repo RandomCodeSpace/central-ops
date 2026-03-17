@@ -1,0 +1,40 @@
+name: Security Scan 🛡️
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  schedule:
+    - cron: '0 0 * * 0' # Runs weekly as a safety net
+
+jobs:
+  secret-scan:
+    name: Gitleaks Secret Scanner 🕵️‍♂️
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Important: Fetch all history for secret scanning
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  vulnerability-scan:
+    name: Trivy Vulnerability Scanner 📦
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'           # Scans the file system/repo
+          ignore-unfixed: true      # Ignores vulns without a known fix yet
+          format: 'table'           # Clean output in the GitHub Actions logs
+          exit-code: '1'            # Fails the action if vulns are found
+          severity: 'CRITICAL,HIGH' # Only blocks on major issues
