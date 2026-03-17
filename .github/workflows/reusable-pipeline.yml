@@ -111,11 +111,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Resolve pipeline settings
+        id: config
+        run: |
+          WORKING_DIRECTORY='${{ inputs.working_directory }}'
+          GO_VERSION_FILE='${{ inputs.go_version_file }}'
+          CGO_ENABLED='${{ inputs.cgo_enabled }}'
+          GO_TEST_FLAGS='${{ inputs.go_test_flags }}'
+          NODE_VERSION='${{ inputs.node_version }}'
+          UI_BUILD_COMMAND='${{ inputs.ui_build_command }}'
+
+          if [ -z "$WORKING_DIRECTORY" ]; then
+            WORKING_DIRECTORY='.'
+          fi
+
+          if [ -z "$GO_VERSION_FILE" ]; then
+            GO_VERSION_FILE='go.mod'
+          fi
+
+          if [ -z "$CGO_ENABLED" ]; then
+            CGO_ENABLED='0'
+          fi
+
+          if [ -z "$NODE_VERSION" ]; then
+            NODE_VERSION='20'
+          fi
+
+          if [ -z "$UI_BUILD_COMMAND" ]; then
+            UI_BUILD_COMMAND='npm ci && npm run build'
+          fi
+
+          if [ "$WORKING_DIRECTORY" = '.' ]; then
+            GO_VERSION_PATH="$GO_VERSION_FILE"
+          else
+            GO_VERSION_PATH="$WORKING_DIRECTORY/$GO_VERSION_FILE"
+          fi
+
+          echo "working_directory=$WORKING_DIRECTORY" >> "$GITHUB_OUTPUT"
+          echo "go_version_path=$GO_VERSION_PATH" >> "$GITHUB_OUTPUT"
+          echo "cgo_enabled=$CGO_ENABLED" >> "$GITHUB_OUTPUT"
+          echo "go_test_flags=$GO_TEST_FLAGS" >> "$GITHUB_OUTPUT"
+          echo "node_version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "ui_build_command=$UI_BUILD_COMMAND" >> "$GITHUB_OUTPUT"
+
       - name: Detect frontend project
         id: detect-ui
         run: |
           set -euo pipefail
-          BASE="${{ inputs.working_directory }}"
+          BASE="${{ steps.config.outputs.working_directory }}"
           if [ -z "$BASE" ] || [ "$BASE" = "." ]; then
             BASE=""
           else
@@ -145,45 +188,45 @@ jobs:
         if: steps.detect-ui.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs.node_version }}
+          node-version: ${{ steps.config.outputs.node_version }}
           cache: npm
           cache-dependency-path: ${{ steps.detect-ui.outputs.manifest_dir }}/package-lock.json
 
       - name: Build frontend
         if: steps.detect-ui.outputs.exists == 'true'
         working-directory: ${{ steps.detect-ui.outputs.manifest_dir }}
-        run: ${{ inputs.ui_build_command }}
+        run: ${{ steps.config.outputs.ui_build_command }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ inputs.working_directory }}/${{ inputs.go_version_file }}
+          go-version-file: ${{ steps.config.outputs.go_version_path }}
           cache: true
 
       - name: Build
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ steps.config.outputs.working_directory }}
         env:
-          CGO_ENABLED: ${{ inputs.cgo_enabled }}
+          CGO_ENABLED: ${{ steps.config.outputs.cgo_enabled }}
         run: go build ./...
 
       - name: Vet
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ steps.config.outputs.working_directory }}
         run: go vet ./...
 
       - name: Test
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ steps.config.outputs.working_directory }}
         env:
-          CGO_ENABLED: ${{ inputs.cgo_enabled }}
+          CGO_ENABLED: ${{ steps.config.outputs.cgo_enabled }}
         run: |
-          if [ -n "${{ inputs.go_test_flags }}" ]; then
-            go test ${{ inputs.go_test_flags }} ./...
+          if [ -n "${{ steps.config.outputs.go_test_flags }}" ]; then
+            go test ${{ steps.config.outputs.go_test_flags }} ./...
           else
             go test ./...
           fi
 
   security-scan:
     name: Security Scan
-    if: github.event_name != 'release' && inputs.run_security_scan
+    if: github.event_name != 'release' && (github.event_name != 'workflow_call' || inputs.run_security_scan)
     needs: build-and-test
     runs-on: ubuntu-latest
     permissions:
@@ -209,7 +252,7 @@ jobs:
 
   openssf-scorecard:
     name: OpenSSF Scorecard
-    if: github.event_name != 'release' && inputs.run_openssf_scorecard
+    if: github.event_name != 'release' && (github.event_name != 'workflow_call' || inputs.run_openssf_scorecard)
     needs: build-and-test
     runs-on: ubuntu-latest
     permissions:
@@ -235,7 +278,7 @@ jobs:
 
   auto-beta:
     name: Auto Beta
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.run_auto_beta && inputs.run_security_scan && inputs.run_codeql && inputs.run_openssf_scorecard
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_call' || (inputs.run_auto_beta && inputs.run_security_scan && inputs.run_openssf_scorecard))
     needs:
       - security-scan
       - openssf-scorecard
