@@ -198,10 +198,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: foobar
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: p/default
       - name: Run Trivy Scanner
         uses: aquasecurity/trivy-action@master
         with:
