@@ -12,27 +12,35 @@ on:
 
   
 jobs:
-  secret-scan:
-    name: Gitleaks Secret Scanner 🕵️‍♂️
+  security-scan:
+    name:  Security Scan 🛡️
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important: Fetch all history for secret scanning
-
+          fetch-depth: 0
+        if: always()
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        if: always()
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+        if: always()
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        if: always()
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: foobar
-  vulnerability-scan:
-    name: Trivy Vulnerability Scanner 📦
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+        if: always()
+      - name: Run Semgrep (Code Logic / SAST) 🧠
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/default # Uses the smartest community-driven rulesets
+        if: always()
       - name: Run Trivy Scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -41,40 +49,4 @@ jobs:
           format: 'table'           # Clean output in the GitHub Actions logs
           exit-code: '1'            # Fails the action if vulns are found
           severity: 'CRITICAL,HIGH' # Only blocks on major issues
-
-  analyze:
-    name: CodeQL Analysis 🛡️
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'go', 'javascript-typescript' ]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
-  govulncheck:
-    name: Go Vuln Check 🛡️
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-      - name: Run govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
-
+        if: always()
