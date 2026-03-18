@@ -316,18 +316,11 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ steps.detect-ui-beta.outputs.manifest_dir }}/package-lock.json
 
-      - name: Build and commit UI dist
+      - name: Build UI dist for beta tag
         if: steps.detect-ui-beta.outputs.exists == 'true'
         run: |
           set -euo pipefail
           (cd "${{ steps.detect-ui-beta.outputs.manifest_dir }}" && npm ci && npm run build)
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: build UI dist for release [skip ci]"
-            git push origin HEAD
-          fi
 
       - name: Compute next beta version
         id: version
@@ -352,8 +345,20 @@ jobs:
           echo "version=${NEXT}" >> "$GITHUB_OUTPUT"
       - name: Create and push tag
         run: |
-          git tag ${{ steps.version.outputs.version }}
-          git push origin ${{ steps.version.outputs.version }}
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.version }}"
+
+          if [ "${{ steps.detect-ui-beta.outputs.exists }}" = 'true' ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: build UI dist for ${TAG} [skip ci]"
+            fi
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
       - name: Create pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -398,23 +403,28 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ steps.detect-ui-release.outputs.manifest_dir }}/package-lock.json
 
-      - name: Build and commit UI dist
+      - name: Build UI dist for release tag
         if: steps.detect-ui-release.outputs.exists == 'true'
         run: |
           set -euo pipefail
           (cd "${{ steps.detect-ui-release.outputs.manifest_dir }}" && npm ci && npm run build)
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: build UI dist for release [skip ci]"
-            git push origin HEAD
-          fi
 
       - name: Create and push tag
         run: |
-          git tag ${{ github.event.inputs.release_version }}
-          git push origin ${{ github.event.inputs.release_version }}
+          set -euo pipefail
+          TAG="${{ github.event.inputs.release_version }}"
+
+          if [ "${{ steps.detect-ui-release.outputs.exists }}" = 'true' ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: build UI dist for ${TAG} [skip ci]"
+            fi
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
